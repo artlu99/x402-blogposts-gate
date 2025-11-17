@@ -1,0 +1,15 @@
+# prod
+dist/
+
+# dev
+worker-configuration.d.ts
+
+# deps
+node_modules/
+.wrangler
+bun.lock
+
+# env
+.env
+.env.production
+.dev.vars

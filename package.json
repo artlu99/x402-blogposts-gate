@@ -1,0 +1,17 @@
+{
+  "name": "x402",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy --minify",
+    "types": "wrangler types --env-interface CloudflareBindings"
+  },
+  "dependencies": {
+    "hono": "^4.10.6",
+    "itty-fetcher": "^1.0.10",
+    "tiny-invariant": "^1.3.3"
+  },
+  "devDependencies": {
+    "wrangler": "^4.4.0"
+  }
+}
