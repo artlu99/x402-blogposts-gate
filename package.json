@@ -13,6 +13,7 @@
     "hono": "^4.10.6",
     "itty-fetcher": "^1.0.10",
     "tiny-invariant": "^1.3.3",
+    "x402-hono": "^0.7.1",
     "zod": "^4.1.12"
   },
   "devDependencies": {
