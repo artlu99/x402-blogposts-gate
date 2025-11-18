@@ -39,8 +39,7 @@ app
       });
     }
   )
-  .openapi(
-    createRoute({
+  .openapi(createRoute({
       method: "get",
       path: "/live",
       summary: "Uptime",
@@ -105,6 +104,179 @@ app
       return c.json(db);
     }
   )
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/all-ticks",
+      summary: "Get all ticks",
+      description:
+        "Retrieves tick data, including ticker, timestamp, and adjusted close price",
+      tags: ["Live Data"],
+      responses: {
+        200: {
+          content: {
+            "application/json": {
+              schema: z.array(
+                z.object({
+                  timestamp: z.string().openapi({
+                    example: new Date().toISOString(),
+                  }),
+                  ticker: z.string(),
+                  mark: z.number(),
+                  source: z.string().openapi({
+                    example: "yahoo",
+                  }),
+                })
+              ),
+            },
+          },
+          description: "Array of tick data",
+        },
+      },
+    }),
+    async (c) => {
+      const ticks = await api.get<
+        {
+          timestamp: string;
+          ticker: string;
+          mark: number;
+          source: string;
+        }[]
+      >("/all-ticks");
+      return c.json(ticks);
+    }
+  )
+  .openapi(createRoute({
+    method: "post",
+    path: "/force-update",
+    summary: "Force live update for all tickers",
+    description: "Forces an update of live market data for all known tickers",
+    tags: ["Live Data"],
+    responses: {
+      200: {
+        content: {
+          "application/json": {
+            schema: z.object({
+              message: z.string(),
+            }),
+          },
+        },
+        description: "Response for status 200",
+      }
+    }
+  }), async (c) => {
+    const response = await api.post<{ message: string }>("/force-update");
+    return c.json(response);
+  })
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/chart-data/{ticker}",
+      request: {
+        params: z.object({ ticker: z.string() }),
+        query: z.object({
+          start_date: z
+            .string()
+            .refine((date) => new Date(date).getTime() > 0, {
+              message: "Invalid start date",
+            })
+            .optional(),
+          end_date: z
+            .string()
+            .refine((date) => new Date(date).getTime() > 0, {
+              message: "Invalid end date",
+            })
+            .optional(),
+        }),
+      },
+      summary: "Get chart data for a ticker",
+      description:
+        "Retrieves chart data for a ticker, including ticker, timestamp, and adjusted close price",
+      tags: ["Chart Data"],
+      responses: {
+        200: {
+          content: {
+            "application/json": {
+              schema: z.array(
+                z.object({
+                  ticker: z.string(),
+                  dt_string: z.string(),
+                  open_trade: z.number(),
+                  high: z.number(),
+                  low: z.number(),
+                  unadj_close: z.number(),
+                  volume: z.number().openapi({
+                    example: 0,
+                  }),
+                  adj_close: z.number(),
+                  timestamp: z.string().openapi({
+                    example: new Date().toISOString(),
+                  }),
+                  source: z.string().openapi({
+                    example: "yahoo",
+                  }),
+                })
+              ),
+            },
+          },
+          description: "Response for status 200",
+        },
+      },
+    }),
+    async (c) => {
+      const ticker = c.req.param("ticker");
+      const { start_date, end_date } = c.req.query();
+
+      const qs = new URLSearchParams();
+      if (start_date) {
+        qs.set("start_date", start_date);
+      }
+      if (end_date) {
+        qs.set("end_date", end_date);
+      }
+      const chartData = await api.get<
+        {
+          ticker: string;
+          dt_string: string;
+          open_trade: number;
+          high: number;
+          low: number;
+          unadj_close: number;
+          volume: number;
+          adj_close: number;
+          timestamp: string;
+          source: string;
+        }[]
+      >(`/chart-data/${ticker}?${qs.toString()}`);
+      return c.json(chartData);
+    }
+  )
+  .openapi(createRoute({
+    method: "post",
+    path: "/force-update/{ticker}",
+    summary: "Force full update for a ticker",
+    description: "Forces an update of the full chart data for a specific ticker",
+    tags: ["Live Data", "Chart Data"],
+    request: {
+      params: z.object({ ticker: z.string() }),
+    },
+    responses: {
+      200: {
+        content: {
+          "application/json": {
+            schema: z.object({
+              message: z.string(),
+            }),
+          },
+        },
+        description: "Response for status 200",
+      }
+    }
+  }), async (c) => {
+    const ticker = c.req.param("ticker");
+    const response = await api.post<{ message: string }>(`/force-update/${ticker}`);
+    return c.json(response);
+  })
   .use("*", async (c, next) => {
     const middleware = paymentMiddleware(
       "0x094f1608960A3cb06346cFd55B10b3cEc4f72c78",
