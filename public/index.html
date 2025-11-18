@@ -1,9 +1,21 @@
 <html lang="en">
   <head>
-    <title>OHLCV API</title>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>OHLCV API</title>
+
+    <!-- 0. DaisyUI -->
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
     <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />
+
+    <!-- 1. Configure Tailwind CDN to use the Typography Plugin -->
+    <script type="module">
+      import typography from "https://esm.sh/@tailwindcss/typography@0.5.10";
+      tailwind.config = { plugins: [typography] };
+    </script>
+
+    <!-- 2. Load the main Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="styles.css" type="text/css" />
   </head>
   <body data-theme="silk">
@@ -22,12 +34,7 @@
       </ul>
 
       <h2>Documentation</h2>
-      <button
-        class="btn btn-wide btn-info"
-        onclick="window.open('/docs', '_blank')"
-      >
-        OpenAPI
-      </button>
+      <button class="btn btn-wide btn-info" onclick="window.open('/docs', '_blank')">OpenAPI</button>
 
       <h2>Source Code</h2>
       <a
