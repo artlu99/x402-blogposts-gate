@@ -5,6 +5,7 @@ import { Scalar } from "@scalar/hono-api-reference";
 import { fetcher } from "itty-fetcher";
 import invariant from "tiny-invariant";
 import { paymentMiddleware } from "x402-hono";
+import { facilitator } from "@coinbase/x402";
 
 const api = fetcher({ base: "https://ohlcv.artlu.xyz" });
 
@@ -39,7 +40,8 @@ app
       });
     }
   )
-  .openapi(createRoute({
+  .openapi(
+    createRoute({
       method: "get",
       path: "/live",
       summary: "Uptime",
@@ -146,28 +148,31 @@ app
       return c.json(ticks);
     }
   )
-  .openapi(createRoute({
-    method: "post",
-    path: "/force-update",
-    summary: "Force live update for all tickers",
-    description: "Forces an update of live market data for all known tickers",
-    tags: ["Live Data"],
-    responses: {
-      200: {
-        content: {
-          "application/json": {
-            schema: z.object({
-              message: z.string(),
-            }),
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/force-update",
+      summary: "Force live update for all tickers",
+      description: "Forces an update of live market data for all known tickers",
+      tags: ["Live Data"],
+      responses: {
+        200: {
+          content: {
+            "application/json": {
+              schema: z.object({
+                message: z.string(),
+              }),
+            },
           },
+          description: "Response for status 200",
         },
-        description: "Response for status 200",
-      }
+      },
+    }),
+    async (c) => {
+      const response = await api.post<{ message: string }>("/force-update");
+      return c.json(response);
     }
-  }), async (c) => {
-    const response = await api.post<{ message: string }>("/force-update");
-    return c.json(response);
-  })
+  )
   .openapi(
     createRoute({
       method: "get",
@@ -251,44 +256,51 @@ app
       return c.json(chartData);
     }
   )
-  .openapi(createRoute({
-    method: "post",
-    path: "/force-update/{ticker}",
-    summary: "Force full update for a ticker",
-    description: "Forces an update of the full chart data for a specific ticker",
-    tags: ["Live Data", "Chart Data"],
-    request: {
-      params: z.object({ ticker: z.string() }),
-    },
-    responses: {
-      200: {
-        content: {
-          "application/json": {
-            schema: z.object({
-              message: z.string(),
-            }),
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/force-update/{ticker}",
+      summary: "Force full update for a ticker",
+      description:
+        "Forces an update of the full chart data for a specific ticker",
+      tags: ["Live Data", "Chart Data"],
+      request: {
+        params: z.object({ ticker: z.string() }),
+      },
+      responses: {
+        200: {
+          content: {
+            "application/json": {
+              schema: z.object({
+                message: z.string(),
+              }),
+            },
           },
+          description: "Response for status 200",
         },
-        description: "Response for status 200",
-      }
+      },
+    }),
+    async (c) => {
+      const ticker = c.req.param("ticker");
+      const response = await api.post<{ message: string }>(
+        `/force-update/${ticker}`
+      );
+      return c.json(response);
     }
-  }), async (c) => {
-    const ticker = c.req.param("ticker");
-    const response = await api.post<{ message: string }>(`/force-update/${ticker}`);
-    return c.json(response);
-  })
+  )
   .use("*", async (c, next) => {
     const middleware = paymentMiddleware(
-      "0x094f1608960A3cb06346cFd55B10b3cEc4f72c78",
+      c.env.ADDRESS as `0x${string}`,
       {
         "/paid": {
           price: "$0.0001",
           network: "base",
+          config: {
+            description: "OHLCV API by artlu99",
+          }
         },
       },
-      {
-        url: "https://open.x402.host",
-      }
+      facilitator
     );
     return middleware(c, next);
   })
@@ -320,7 +332,7 @@ app
     }
   )
   .doc("/openapi", {
-    openapi: "3.0.0",
+    openapi: "3.1.0",
     info: {
       version: "1.0.0",
       title: "OHLCV API",
@@ -337,4 +349,39 @@ app
   })
   .get("/docs", Scalar({ url: "/openapi" }));
 
-export default app;
+export default {
+  fetch: app.fetch,
+  async scheduled(
+    controller: ScheduledController,
+    ctx: ExecutionContext
+  ) {
+    const startTime = Date.now();
+    console.log(JSON.stringify({
+      type: "cron_triggered",
+      cron: controller.cron,
+      scheduledTime: controller.scheduledTime,
+      timestamp: new Date().toISOString(),
+    }));
+
+    try {
+      await api.post("/force-update");
+      const duration = Date.now() - startTime;
+      console.log(JSON.stringify({
+        type: "cron_completed",
+        cron: controller.cron,
+        duration: `${duration}ms`,
+        timestamp: new Date().toISOString(),
+      }));
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      console.error(JSON.stringify({
+        type: "cron_error",
+        cron: controller.cron,
+        error: error instanceof Error ? error.message : String(error),
+        duration: `${duration}ms`,
+        timestamp: new Date().toISOString(),
+      }));
+      throw error;
+    }
+  },
+};

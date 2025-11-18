@@ -1,2 +1,3 @@
-FACILITATOR_URL=https://x402.org/facilitator
-ADDRESS=
+ADDRESS=0x000000000dead
+CDP_API_KEY_ID=your-api-key-id
+CDP_API_KEY_SECRET=your-api-key-secret
