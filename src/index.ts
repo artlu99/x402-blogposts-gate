@@ -1,11 +1,9 @@
-import { z } from "@hono/zod-openapi";
-import { createRoute } from "@hono/zod-openapi";
-import { OpenAPIHono } from "@hono/zod-openapi";
+import { createFacilitatorConfig } from "@coinbase/x402";
+import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { Scalar } from "@scalar/hono-api-reference";
 import { fetcher } from "itty-fetcher";
 import invariant from "tiny-invariant";
 import { paymentMiddleware } from "x402-hono";
-import { facilitator } from "@coinbase/x402";
 
 const api = fetcher({ base: "https://ohlcv.artlu.xyz" });
 
@@ -289,6 +287,14 @@ app
     }
   )
   .use("*", async (c, next) => {
+    invariant(c.env.CDP_API_KEY_ID, "CDP_API_KEY_ID is not set");
+    invariant(c.env.CDP_API_KEY_SECRET, "CDP_API_KEY_SECRET is not set");
+    const facilitator = createFacilitatorConfig(
+      c.env.CDP_API_KEY_ID,
+      c.env.CDP_API_KEY_SECRET
+    );
+    invariant(facilitator?.createAuthHeaders, "createAuthHeaders is not set");
+
     const middleware = paymentMiddleware(
       c.env.ADDRESS as `0x${string}`,
       {
@@ -296,41 +302,29 @@ app
           price: "$0.0001",
           network: "base",
           config: {
-            description: "OHLCV API by artlu99",
-          }
+            description: "Returns gated content",
+            inputSchema: {},
+            outputSchema: {
+              type: "text/plain",
+              properties: {
+                message: {
+                  type: "string",
+                  example: "****",
+                },
+              },
+            },
+          },
         },
       },
-      facilitator
+      facilitator,
     );
     return middleware(c, next);
   })
-  .openapi(
-    createRoute({
-      method: "get",
-      path: "/paid",
-      summary: "Gated content",
-      description: "Returns gated content",
-      tags: ["x402"],
-      responses: {
-        200: {
-          content: {
-            "text/plain": {
-              schema: z.string().openapi({
-                example: "****",
-              }),
-            },
-          },
-          description: "Response for status 200",
-        },
-      },
-    }),
-    (c) => {
-      invariant(c.env.FACILITATOR_URL, "FACILITATOR_URL is not set");
-      invariant(c.env.ADDRESS, "ADDRESS is not set");
+  .get("/paid", async (c) => {
+    invariant(c.env.ADDRESS, "ADDRESS is not set");
 
-      return c.text("****");
-    }
-  )
+    return c.text("****");
+  })
   .doc("/openapi", {
     openapi: "3.1.0",
     info: {
@@ -351,36 +345,39 @@ app
 
 export default {
   fetch: app.fetch,
-  async scheduled(
-    controller: ScheduledController,
-    ctx: ExecutionContext
-  ) {
+  async scheduled(controller: ScheduledController, ctx: ExecutionContext) {
     const startTime = Date.now();
-    console.log(JSON.stringify({
-      type: "cron_triggered",
-      cron: controller.cron,
-      scheduledTime: controller.scheduledTime,
-      timestamp: new Date().toISOString(),
-    }));
+    console.log(
+      JSON.stringify({
+        type: "cron_triggered",
+        cron: controller.cron,
+        scheduledTime: controller.scheduledTime,
+        timestamp: new Date().toISOString(),
+      })
+    );
 
     try {
       await api.post("/force-update");
       const duration = Date.now() - startTime;
-      console.log(JSON.stringify({
-        type: "cron_completed",
-        cron: controller.cron,
-        duration: `${duration}ms`,
-        timestamp: new Date().toISOString(),
-      }));
+      console.log(
+        JSON.stringify({
+          type: "cron_completed",
+          cron: controller.cron,
+          duration: `${duration}ms`,
+          timestamp: new Date().toISOString(),
+        })
+      );
     } catch (error) {
       const duration = Date.now() - startTime;
-      console.error(JSON.stringify({
-        type: "cron_error",
-        cron: controller.cron,
-        error: error instanceof Error ? error.message : String(error),
-        duration: `${duration}ms`,
-        timestamp: new Date().toISOString(),
-      }));
+      console.error(
+        JSON.stringify({
+          type: "cron_error",
+          cron: controller.cron,
+          error: error instanceof Error ? error.message : String(error),
+          duration: `${duration}ms`,
+          timestamp: new Date().toISOString(),
+        })
+      );
       throw error;
     }
   },
