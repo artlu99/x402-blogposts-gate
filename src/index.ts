@@ -299,7 +299,7 @@ app
       c.env.ADDRESS as `0x${string}`,
       {
         "/paid": {
-          price: "$0.0001",
+          price: "$0.001",
           network: "base",
           config: {
             description: "Returns gated content",
