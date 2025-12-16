@@ -2,14 +2,8 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "x402",
   "main": "src/index.ts",
-  "compatibility_date": "2025-11-18",
+  "compatibility_date": "2025-12-16",
   "compatibility_flags": ["nodejs_compat"],
-  "triggers": {
-    "crons": [
-      "31 14 * * *", // every day at  9:31 AM EST (14:31 UTC)
-      "00 17 * * *", // every day at 12:00 PM EST (17:00 UTC)
-    ]
-  },
   "assets": { "directory": "public" },
   "observability": { "enabled": true }
 }
