@@ -13,3 +13,6 @@ bun.lock
 .env
 .env.production
 .dev.vars
+
+# compiled assets
+public/styles.css
