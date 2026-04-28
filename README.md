@@ -1,6 +1,8 @@
 # x402-blogposts-gate
 
-simple, free proxy server for gating blog posts with x402
+minimalist server for accepting x402 payments
+
+x402 v2 libraries now have a `paywallConfig.sessionTokenEndpoint` concept which is better for gating
 
 ## DEVELOPMENT
 
